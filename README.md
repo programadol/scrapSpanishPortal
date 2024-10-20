@@ -50,6 +50,13 @@ Este bot en **Java** realiza comprobaciones periódicas sobre un portal inmobili
 3. Ejecuta `mvn install` para instalar las dependencias.
 4. Corre la clase `Main` con un click derecho sobre "Run". ¡Listo!
 
+### **Modo libre (Script externo)**
+
+Ahora ya es posible ejecutar el BOT a demanda del usuario cuando le interese. En este caso, sería ejecutar el fichero .JAR con una serie de parámetros, de tal manera que 
+
+1. Ejecutamos SIEMPRE el bot de manera primeriza con el parámetro --cache-all  `java -jar scrappisos_v1_1_0.jar --start-headless --cache-all --config-file "/path/to/configFile"`
+2. Ejecutamos de manera posterior las veces que necesitemos o queramos, segun nuestras premisas con el argumento --fetch-new  `java -jar scrappisos_v1_1_0.jar --start-headless --fetch-new --config-file "/path/to/configFile"`
+
 ## ⚙️ Manual de configuración detallada
 
 1. **Configuración del bot de Telegram**:
@@ -69,6 +76,7 @@ Este bot en **Java** realiza comprobaciones periódicas sobre un portal inmobili
    - Este valor corresponde al tiempo (en minutos) entre cada comprobación del portal. Se recomienda introducir `5` (5 minutos).
    - También es posible configurar un valor aleatorio (entre 5 y 300 minutos).
    - También es posible configurar un valor en formato Cronjob.
+   - También es posible ejecutar el modo libre, de tal manera que permite ejecutar el BOT a demanda de un sistema externo.
 
 3. **Añadir un Tracker**:
    - Presiona el botón `+Tracker` para crear un nuevo **endpoint**:
