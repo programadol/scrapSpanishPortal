@@ -60,7 +60,7 @@ public class StartManager {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Alerta");
                     alert.setHeaderText(null);
-                    alert.setContentText("Se han guardado los cambios, pero el modo libre está activado, por lo que el BOT deberás ejecutarlo con los parámetros --start-headless, --config-file, --fetch-and-cache y --fetch-and-notify.");
+                    alert.setContentText("Se han guardado los cambios, pero el modo libre está activado, por lo que el BOT deberás ejecutarlo primero con los parámetros --start-headless, --config-file y --cache-all, y posteriormente --start-headless, --config-file y --fetch-new.");
                     alert.showAndWait();
                 }else{
                     Platform.runLater(() -> new LiveControlView().start(new Stage()));

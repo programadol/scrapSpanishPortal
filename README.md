@@ -38,7 +38,7 @@ Este bot en **Java** realiza comprobaciones periódicas sobre un portal inmobili
 
 ### **Para usuarios no técnicos (Windows)**
 
-1. **Instala JDK 23**: Descárgalo desde [este enlace](https://www.oracle.com/es/java/technologies/downloads/#jdk23-windows).
+1. **Instala JDK 22**: Descárgalo desde [este enlace](https://www.oracle.com/es/java/technologies/downloads/#jdk23-windows).
 2. **Descarga el `.BAT`** de la sección de [releases](https://github.com/programadol/scrapSpanishPortal/releases/tag/v1.0.0).
 3. **Descarga el `.JAR`** de la misma sección de [releases](https://github.com/programadol/scrapSpanishPortal/releases/tag/v1.0.0).
 4. **Ejecuta el `.BAT`** haciendo doble clic sobre él, y el bot se iniciará automáticamente. ¡Voilà! 
