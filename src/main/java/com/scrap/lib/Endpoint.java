@@ -1,12 +1,19 @@
 package com.scrap.lib;
 
+import com.google.gson.annotations.Expose;
+
 import java.util.Map;
 
 public class Endpoint {
+    @Expose
     private String id;
+    @Expose
     private String name;
+    @Expose
     private String type;
+    @Expose
     private Map<String, String> params;
+    @Expose
     private Map<String, String> headers;
 
     public String getId() {

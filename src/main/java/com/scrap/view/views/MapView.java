@@ -15,10 +15,10 @@ import java.util.Arrays;
 
 public class MapView extends Application {
 
-    private static ListenerMapView listenerMapView;
-    private static Coordinate preselectedSouthWest;
-    private static Coordinate preselectedNorthEast;
-    private static double preselectedzoom;
+    private ListenerMapView listenerMapView;
+    private Coordinate preselectedSouthWest;
+    private Coordinate preselectedNorthEast;
+    private double preselectedzoom;
     private com.sothawo.mapjfx.MapView mapView;
     private Label statusLabel;
     private CoordinateLine polygon;
@@ -27,11 +27,11 @@ public class MapView extends Application {
         launch(args);
     }
 
-    public static void setListenerMapView(ListenerMapView listenerMapView) {
-        MapView.listenerMapView = listenerMapView;
+    public void setListenerMapView(ListenerMapView listenerMapView) {
+        this.listenerMapView = listenerMapView;
     }
 
-    public static void preselectCoordinatesAndZoom(String southWest, String northEast, String zoom) {
+    public void preselectCoordinatesAndZoom(String southWest, String northEast, String zoom) {
         String[] partsSouth = southWest.split(", ");
         preselectedSouthWest = new Coordinate(Double.parseDouble(partsSouth[0]), Double.parseDouble(partsSouth[1]));
 

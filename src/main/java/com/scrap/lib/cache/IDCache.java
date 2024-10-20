@@ -1,24 +1,30 @@
 package com.scrap.lib.cache;
 
-import com.scrap.lib.log.Logger;
+
+import com.scrap.Main;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.util.HashSet;
 import java.util.Set;
 
 public class IDCache {
+    private static final Logger logger = LogManager.getLogger(Main.class);
+
     private final String FILENAME;
 
     private final Set<String> cachedIDs;
 
     private File outputDir;
+
     private File archivo;
 
-
-    public IDCache(String idFilename) {
+    public IDCache(String idFilename, String folderPath) {
         cachedIDs = new HashSet<>();
         FILENAME = "cached_ads_" + idFilename + ".txt";
-        outputDir = new File(System.getenv("APPDATA") + "/scraper/");
+        outputDir = new File(folderPath);
         outputDir.mkdirs();
         archivo = new File(outputDir, FILENAME);
         loadCacheFromFile();
@@ -41,9 +47,9 @@ public class IDCache {
         if (!archivo.exists()) {
             try {
                 archivo.createNewFile();
-                Logger.log("Archivo caché creado correctamente con el nombre " + FILENAME);
+                logger.log(Level.DEBUG,"Archivo caché creado correctamente con el nombre " + FILENAME);
             } catch (Exception e) {
-                Logger.log("Error creando archivo de caché " + FILENAME + " , errores: " + e.getMessage());
+                logger.log(Level.DEBUG,"Error creando archivo de caché " + FILENAME + " , errores: " + e.getMessage());
             }
         }
         try (BufferedReader br = new BufferedReader(new FileReader(archivo))) {
@@ -52,7 +58,7 @@ public class IDCache {
                 cachedIDs.add(line.trim());
             }
         } catch (Exception e) {
-            Logger.log("Lectura del archivo de caché " + FILENAME + " , errores: " + e.getMessage());
+            logger.log(Level.DEBUG,"Lectura del archivo de caché " + FILENAME + " , errores: " + e.getMessage());
         }
     }
 
@@ -63,7 +69,7 @@ public class IDCache {
                 bw.newLine();
             }
         } catch (Exception e) {
-            Logger.log("Error guardando en archivo de caché " + FILENAME + " , errores: " + e.getMessage());
+            logger.log(Level.DEBUG,"Error guardando en archivo de caché " + FILENAME + " , errores: " + e.getMessage());
         }
     }
 }

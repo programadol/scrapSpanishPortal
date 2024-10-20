@@ -2,23 +2,29 @@ package com.scrap.lib.spanishportal;
 
 import com.google.gson.Gson;
 import com.scrap.Constants;
+import com.scrap.Main;
 import com.scrap.lib.Endpoint;
 import com.scrap.lib.spanishportal.coreapi.SpanishPortalDetailResponse;
-import com.scrap.lib.log.Logger;
 import com.scrap.lib.telegram.NewHomeMessage;
 import com.scrap.lib.spanishportal.coreapi.SpanishPortalResponse;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class SpanishPortalLib {
+    private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static List<SpanishPortalResponse.Data.MapData.MapItem> parseIdHomes(String string, OkHttpClient client, Gson gson, Endpoint endpoint) {
         SpanishPortalResponse spanishPortalResponse = gson.fromJson(string, SpanishPortalResponse.class);
         ArrayList<SpanishPortalResponse.Data.MapData.MapItem> listReturn = new ArrayList<>();
+        if (spanishPortalResponse == null || spanishPortalResponse.getData() == null || spanishPortalResponse.getData().getMap() == null) return listReturn;
         for (SpanishPortalResponse.Data.MapData.MapItem item : spanishPortalResponse.getData().getMap().getItems()) {
             listReturn.add(item);
         }
@@ -26,6 +32,11 @@ public class SpanishPortalLib {
     }
 
     public static NewHomeMessage requestDetails(Long idHome, OkHttpClient client, Gson gson, Endpoint endpoint, SpanishPortalResponse.Data.MapData.MapItem item) {
+        try {
+            Thread.sleep(humanWait());
+        } catch (InterruptedException e) {
+            logger.log(Level.DEBUG,"Error wait requestDetails concretamente client.newCall(requestDetails).execute(), errores: " + e.getMessage());
+        }
         Request.Builder reqBuilderSpanishPortal = new Request.Builder()
                 .url("https://www." + endpoint.getType() + ".com/" + Constants.DETAILS_SUFFIX_REQUEST + idHome)
                 .method("GET", null);
@@ -61,8 +72,16 @@ public class SpanishPortalLib {
             return newHomeMessage;
 
         } catch (Exception e) {
-            Logger.log("Error requestDetails concretamente client.newCall(requestDetails).execute(), errores: " + e.getMessage());
+            logger.log(Level.DEBUG,"Error requestDetails concretamente client.newCall(requestDetails).execute(), errores: " + e.getMessage());
         }
         return null;
+    }
+
+    private static int humanWait() {
+        Random random = new Random();
+        int min = 2000;
+        int max = 15000;
+
+        return random.nextInt(max - min + 1) + min;
     }
 }

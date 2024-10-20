@@ -1,8 +1,8 @@
 package com.scrap.view.views;
 
+import com.scrap.Main;
 import com.scrap.lib.ConfigFile;
 import com.scrap.lib.Endpoint;
-import com.scrap.lib.log.Logger;
 import com.scrap.view.listeners.ListenerConfiguration;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -22,6 +22,10 @@ import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import org.apache.commons.text.RandomStringGenerator;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.*;
 import java.io.File;
@@ -30,13 +34,19 @@ import java.util.HashMap;
 import java.util.List;
 
 public class StartConfigView extends Application {
+    private static final Logger logger = LogManager.getLogger(Main.class);
 
-    private static ConfigFile configFile = new ConfigFile();
+    private static ConfigFile configFile;
     private static ListenerConfiguration listenerConfiguration;
     private static Stage primaryStage;
 
     public static void setListenerConfiguration(ListenerConfiguration listener) {
         listenerConfiguration = listener;
+    }
+
+    static {
+        configFile = new ConfigFile();
+        configFile.setFilePath(ConfigFile.getDefaultFileConfig());
     }
 
     public static void setConfigFile(ConfigFile config) {
@@ -77,15 +87,16 @@ public class StartConfigView extends Application {
         footer.setAlignment(Pos.CENTER_RIGHT);
 
         Button saveButton = createButton("✔ GUARDAR & ARRANCAR BOT", e -> guardarConfiguracion(), "#2E7D32");
-        Button importButton = createButton("\uD83D\uDCE4 IMPORTAR JSON", e -> importJsonDialog(), "#1565C0");
-        Button openFolderBot = createButton("\uD83D\uDCC2 ABRIR CARPETA BOT", e -> openFolderBot(), "#1565C0");
+        Button importButton = createButton("\uD83D\uDCE4 IMPORTAR CONFIG", e -> importJsonDialog(), "#1565C0");
+        Button exportButton = createButton("\uD83D\uDCE4 EXPORTAR CONFIG", e -> exportJsonDialog(), "#1565C0");
+        Button openFolderBot = createButton("\uD83D\uDCC2 ABRIR CONFIG", e -> openFolderBot(), "#1565C0");
 
-        footer.getChildren().addAll(openFolderBot, importButton, saveButton);
+        footer.getChildren().addAll(openFolderBot, exportButton, importButton, saveButton);
 
         root.setCenter(scrollPane);
         root.setBottom(footer);
 
-        Scene scene = new Scene(root, 600, 700);
+        Scene scene = new Scene(root, 800, 700);
         primaryStage.setScene(scene);
         primaryStage.setTitle("Configuración de Parámetros");
     }
@@ -97,28 +108,114 @@ public class StartConfigView extends Application {
         TextField botTokenField = createTextField(configFile.getTelegram_bot_token(), 400);
         TextField botUsernameField = createTextField(configFile.getTelegram_bot_username(), 400);
         TextField notifyUserField = createTextField(configFile.getTelegram_notify_user(), 400);
-        TextField pollingIntervalField = createTextField(
-                configFile.getPollingInternalMilliseconds() != null
-                        ? configFile.getPollingInternalMilliseconds().toString() : "",
-                150
-        );
 
         botTokenField.textProperty().addListener((obs, oldVal, newVal) -> configFile.setTelegram_bot_token(newVal));
         botUsernameField.textProperty().addListener((obs, oldVal, newVal) -> configFile.setTelegram_bot_username(newVal));
         notifyUserField.textProperty().addListener((obs, oldVal, newVal) -> configFile.setTelegram_notify_user(newVal));
-        pollingIntervalField.textProperty().addListener((obs, oldVal, newVal) -> {
-            if (!newVal.isEmpty()) configFile.setPollingInternalMilliseconds(Long.parseLong(newVal));
+
+
+        ToggleGroup pollingModeGroup = new ToggleGroup();
+
+        RadioButton randomModeButton = new RadioButton("Random (5min-300min)");
+        randomModeButton.setToggleGroup(pollingModeGroup);
+        randomModeButton.setUserData(0);
+        randomModeButton.setSelected(true);
+
+        RadioButton pollingMillisecondsButton = new RadioButton("Every X minutes");
+        pollingMillisecondsButton.setToggleGroup(pollingModeGroup);
+        pollingMillisecondsButton.setUserData(1);
+
+        RadioButton cronjobModeButton = new RadioButton("Cronjob");
+        cronjobModeButton.setToggleGroup(pollingModeGroup);
+        cronjobModeButton.setUserData(2);
+
+        TextField userInputText = new TextField();
+        userInputText.setPromptText("");
+        userInputText.setVisible(false);
+
+        userInputText.textProperty().addListener((obs, oldVal, newVal) -> {
+            configFile.setUserinput_polling(newVal);
         });
+
+        Label labelBeforeInputPolling = new Label("");
+        labelBeforeInputPolling.setVisible(false);
+
+        switch (configFile.getMode_polling()){
+            case 0:
+                randomModeButton.setSelected(true);
+                setRadioRandom(userInputText, labelBeforeInputPolling);
+                break;
+            case 1:
+                pollingMillisecondsButton.setSelected(true);
+                setRadioEveryXMinutes(userInputText, labelBeforeInputPolling);
+                break;
+            case 2:
+                cronjobModeButton.setSelected(true);
+                setRadioCronJob(userInputText, labelBeforeInputPolling);
+                break;
+        }
+        userInputText.setText(configFile.getUserinput_polling());
+
+        pollingModeGroup.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
+            if (newValue != null) {
+                int mode_polling = (int) newValue.getUserData();
+                switch (mode_polling) {
+                    case 0: // Random
+                        setRadioRandom(userInputText, labelBeforeInputPolling);
+                        configFile.setMode_polling(0);
+                        break;
+                    case 1: // Polling Milliseconds
+                        setRadioEveryXMinutes(userInputText, labelBeforeInputPolling);
+                        configFile.setMode_polling(1);
+                        break;
+                    case 2: // Cronjob
+                        setRadioCronJob(userInputText, labelBeforeInputPolling);
+                        configFile.setMode_polling(2);
+                        break;
+                }
+            }
+        });
+
+        HBox hBoxRadios = new HBox();
+        hBoxRadios.setAlignment(Pos.CENTER);
+        hBoxRadios.setMaxWidth(primaryStage.getMaxWidth());
+        hBoxRadios.getChildren().addAll(randomModeButton,
+                pollingMillisecondsButton,
+                cronjobModeButton);
 
         telegramConfigSection.getChildren().addAll(
                 createLabel("Configuración de Telegram", 18, true),
                 createLabel("Telegram Bot Token (Generado por @BotFather):"), botTokenField,
                 createLabel("Telegram Bot Username (Generado por @BotFather):"), botUsernameField,
                 createLabel("Telegram Notify User ID (Extráelo de @getmy_idbot):"), notifyUserField,
-                createLabel("Intervalo de actualización en milisegundos (1s = 1000ms)"), pollingIntervalField
+                createLabel("Modo actualización"),
+                hBoxRadios,
+                labelBeforeInputPolling,
+                userInputText
         );
 
         return telegramConfigSection;
+    }
+
+    public void setRadioRandom(TextField userInputText, Label labelBeforeInputPolling){
+        userInputText.setVisible(false);
+        labelBeforeInputPolling.setVisible(false);
+    }
+
+    public void setRadioEveryXMinutes(TextField userInputText, Label labelBeforeInputPolling){
+        userInputText.setVisible(true);
+        userInputText.setText("");
+        userInputText.setPromptText("Actualización en minutos");
+        labelBeforeInputPolling.setVisible(true);
+        labelBeforeInputPolling.setText("Actualización en minutos");
+    }
+
+    public void setRadioCronJob(TextField userInputText, Label labelBeforeInputPolling){
+        userInputText.setVisible(true);
+        userInputText.setText("");
+        userInputText.setPromptText("Cronjob String");
+        labelBeforeInputPolling.setVisible(true);
+        labelBeforeInputPolling.setText("Cronjob String");
     }
 
     private VBox buildTrackersConfigSection() {
@@ -149,13 +246,26 @@ public class StartConfigView extends Application {
             loadConfigurationFileAndGUI();
         }
     }
+
+    private void exportJsonDialog() {
+        FileChooser fileChooser = new FileChooser();
+        FileChooser.ExtensionFilter extFilter =
+                new FileChooser.ExtensionFilter("json files (*.json)", "*.json");
+        fileChooser.getExtensionFilters().add(extFilter);
+        fileChooser.setInitialFileName("configFile.json");
+        File file = fileChooser.showSaveDialog(primaryStage);
+        if(file != null){
+            listenerConfiguration.onExportFile(configFile, file.toString());
+        }
+    }
+
     private void openFolderBot() {
         try {
-            File outputDir = new File(System.getenv("APPDATA") + "/scraper/");
+            File outputDir = new File(configFile.getFilePath().getParent());
             outputDir.mkdirs();
             Desktop.getDesktop().open(outputDir);
         } catch (IOException e) {
-            Logger.log("Error abriendo la carpeta de bot: " + e.getMessage());
+            logger.log(Level.DEBUG,"Error abriendo la carpeta de bot: " + e.getMessage());
         }
     }
 
@@ -173,6 +283,14 @@ public class StartConfigView extends Application {
         nuevoEndpoint.setParams(createDefaultParams());
         nuevoEndpoint.setHeaders(createDefaultHeaders());
 
+        RandomStringGenerator generator = new RandomStringGenerator.Builder()
+                .withinRange('0', 'z')
+                .filteredBy(c -> (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+                .build();
+        String randomLetters = generator.generate(20);
+
+        nuevoEndpoint.setId(randomLetters);
+
         configFile.getEndpoints().add(nuevoEndpoint);
         accordion.getPanes().add(crearPanelDeEndpoint(nuevoEndpoint, accordion));
     }
@@ -182,13 +300,10 @@ public class StartConfigView extends Application {
         endpointContent.setPadding(new Insets(10));
         endpointContent.setStyle("-fx-background-color: #f4f4f4; -fx-border-radius: 5px;");
 
-        TextField endpointIdField = createTextField(endpoint.getId(), 300, "Número sin espacios");
-        endpointIdField.textProperty().addListener((obs, oldVal, newVal) -> endpoint.setId(newVal));
-
         TextField endpointNameField = createTextField(endpoint.getName(), 300, "Para saber en el bot cuál estás ejecutando");
         endpointNameField.textProperty().addListener((obs, oldVal, newVal) -> endpoint.setName(newVal));
 
-        TextField endpointTypeField = createTextField(endpoint.getType(), 300, "Tipo de endpoint");
+        TextField endpointTypeField = createTextField(endpoint.getType(), 300, "Portal inmobiliario");
         endpointTypeField.textProperty().addListener((obs, oldVal, newVal) -> endpoint.setType(newVal));
 
         Label areaChosenNorth = new Label(getNorthEastStr(endpoint));
@@ -196,18 +311,13 @@ public class StartConfigView extends Application {
         Label zoomChosen = new Label(getZoomStr(endpoint));
         Button chooseMapButton = createButton("\uD83D\uDCCD Seleccionar área en el mapa", e -> openMapView(endpoint, areaChosenNorth, areaChosenSouth, zoomChosen));
 
-        if (endpoint.getParams().get("northEast") != null && endpoint.getParams().get("southWest") != null) {
-            MapView.preselectCoordinatesAndZoom(endpoint.getParams().get("northEast"), endpoint.getParams().get("southWest"), endpoint.getParams().get("zoom"));
-        }
-
         VBox filtros = createFilterSection(endpoint);
 
         Button deleteButton = createButton("Eliminar", e -> eliminarEndpoint(accordion, endpoint, endpointContent), "red");
 
         endpointContent.getChildren().addAll(
-                createLabel("Identificador único:"), endpointIdField,
-                createLabel("Nombre del Endpoint:"), endpointNameField,
-                createLabel("Tipo de Endpoint:"), endpointTypeField,
+                createLabel("Descripción: "), endpointNameField,
+                createLabel("Portal inmobiliario: "), endpointTypeField,
                 chooseMapButton,
                 areaChosenNorth, areaChosenSouth, zoomChosen,
                 filtros, deleteButton
@@ -220,14 +330,19 @@ public class StartConfigView extends Application {
 
     private void openMapView(Endpoint endpoint, Label areaNorth, Label areaSouth, Label zoomLabel) {
         Platform.runLater(() -> {
-            MapView.setListenerMapView((northEast, southWest, zoom) -> {
+            MapView mapView = new MapView();
+            if (endpoint.getParams().get("northEast") != null && endpoint.getParams().get("southWest") != null) {
+                mapView.preselectCoordinatesAndZoom(endpoint.getParams().get("northEast"), endpoint.getParams().get("southWest"), endpoint.getParams().get("zoom"));
+            }
+
+            mapView.setListenerMapView((northEast, southWest, zoom) -> {
                 updateEndpointArea(endpoint, northEast, southWest, zoom);
                 areaNorth.setText(getNorthEastStr(endpoint));
                 areaSouth.setText(getSouthWestStr(endpoint));
                 zoomLabel.setText(getZoomStr(endpoint));
-                MapView.preselectCoordinatesAndZoom(endpoint.getParams().get("northEast"), endpoint.getParams().get("southWest"), endpoint.getParams().get("zoom"));
+                mapView.preselectCoordinatesAndZoom(endpoint.getParams().get("northEast"), endpoint.getParams().get("southWest"), endpoint.getParams().get("zoom"));
             });
-            new MapView().start(new Stage());
+            mapView.start(new Stage());
         });
     }
 
@@ -250,7 +365,7 @@ public class StartConfigView extends Application {
         vbox.setPadding(new Insets(10));
         vbox.setStyle("-fx-background-color: #f4f4f4; -fx-border-radius: 5px;");
 
-        vbox.getChildren().add(createLabel(parameter.getDisplayName()));
+        //vbox.getChildren().add(createLabel(parameter.getDisplayName()));
 
         switch (parameter.getControlType()) {
             case "TextField":
@@ -282,6 +397,19 @@ public class StartConfigView extends Application {
 
     private void eliminarEndpoint(Accordion accordion, Endpoint endpoint, VBox endpointContent) {
         accordion.getPanes().remove(endpointContent.getParent());
+        TitledPane paneToRemove = null;
+
+        for (TitledPane pane : accordion.getPanes()) {
+            if (pane.getContent() == endpointContent) {
+                paneToRemove = pane;
+                break;
+            }
+        }
+
+        if (paneToRemove != null) {
+            accordion.getPanes().remove(paneToRemove);
+        }
+
         configFile.getEndpoints().remove(endpoint);
     }
 
@@ -368,6 +496,8 @@ public class StartConfigView extends Application {
         params.put("liveSearch", "true");
         params.put("device", "desktop");
         params.put("adfilter_published", "4");
+        params.put("operation", "2");
+        params.put("tipology", "10");
         return params;
     }
 
@@ -375,7 +505,7 @@ public class StartConfigView extends Application {
         HashMap<String, String> headers = new HashMap<>();
         headers.put("accept", "application/json, text/javascript, */*; q=0.01");
         headers.put("accept-language", "es-ES,es;q=0.9,en;q=0.8");
-        headers.put("user-agent", "Mozilla/5.0");
+        headers.put("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, como Gecko) Chrome/124.0.0.0 Safari/537.36");
         return headers;
     }
 

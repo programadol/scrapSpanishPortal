@@ -27,7 +27,6 @@ Este bot en **Java** realiza comprobaciones periódicas sobre un portal inmobili
 - 📝 **Inputs de texto sensibles**: Evita usar caracteres especiales en los campos de entrada (sólo alfanuméricos por el momento).
 - 🗺️ **Tecnología del mapa algo obsoleta**: Es posible que algunos comportamientos del mapa no sean los esperados.
 - 🔄 **API de Telegram**: Si envías demasiados mensajes en poco tiempo, Telegram podría bloquear temporalmente tu bot.
-- 🚫 **Múltiples instancias no probadas**: No se ha probado el uso simultáneo de varios trackers o instancias, pero podría aumentar el riesgo de bloqueo.
 
 ## 📂 Archivos importantes
 - `C:\Users\{tu_usuario}\AppData\Roaming\scraper`: Localización de los ficheros importantes del BOT.
@@ -67,7 +66,9 @@ Este bot en **Java** realiza comprobaciones periódicas sobre un portal inmobili
        - Ejecuta `/start` y copia el valor de "Your ID", que será un número de 9 cifras.
 
 2. **Configura el intervalo de actualización**:
-   - Este valor corresponde al tiempo (en milisegundos) entre cada comprobación del portal. Se recomienda introducir `300000` (5 minutos).
+   - Este valor corresponde al tiempo (en minutos) entre cada comprobación del portal. Se recomienda introducir `5` (5 minutos).
+   - También es posible configurar un valor aleatorio (entre 5 y 300 minutos).
+   - También es posible configurar un valor en formato Cronjob.
 
 3. **Añadir un Tracker**:
    - Presiona el botón `+Tracker` para crear un nuevo **endpoint**:
