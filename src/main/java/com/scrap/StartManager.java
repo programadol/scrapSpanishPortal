@@ -14,6 +14,7 @@ import com.scrap.view.listeners.ListenerConfiguration;
 import com.scrap.view.views.LiveControlView;
 import com.scrap.view.views.StartConfigView;
 import javafx.application.Platform;
+import javafx.scene.control.Alert;
 import javafx.stage.Stage;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -33,7 +34,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.sql.SQLOutput;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -56,9 +56,17 @@ public class StartManager {
             public void onSaveAndStart(ConfigFile configFile) {
                 new File(configFile.getFilePath().getParent()).mkdirs();
                 saveConfigFile(configFile, configFile.getFilePath().getPath());
-                Platform.runLater(() -> new LiveControlView().start(new Stage()));
-                loadConfigFile();
-                startBot();
+                if (configFile.getMode_polling() == 3){
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Alerta");
+                    alert.setHeaderText(null);
+                    alert.setContentText("Se han guardado los cambios, pero el modo libre está activado, por lo que el BOT deberás ejecutarlo con los parámetros --start-headless, --config-file, --fetch-and-cache y --fetch-and-notify.");
+                    alert.showAndWait();
+                }else{
+                    Platform.runLater(() -> new LiveControlView().start(new Stage()));
+                    loadConfigFile();
+                    startBotGUI();
+                }
             }
 
             @Override
@@ -76,13 +84,22 @@ public class StartManager {
         StartConfigView.launch(StartConfigView.class);
     }
 
-    public static void startHeadlessWithConfigFile(String pathConfigFile) {
+    public static void startHeadlessWithConfigFile(String pathConfigFile, boolean fetchAndCache, boolean fetchAndNotify) {
         loadConfigFile(pathConfigFile);
-        executeBot();
+        initializeTelegramBot(config.getTelegram_bot_token(), config.getTelegram_notify_user(), config.getTelegram_bot_username(), fetchAndCache);
+        if (fetchAndCache){
+            cacheAll();
+        }
+        if (fetchAndNotify){
+            preloadFastCache();
+            executeBot();
+        }
     }
 
-    private static void startBot() {
+    private static void startBotGUI() {
         Thread thread = new Thread(() -> {
+            initializeTelegramBot(config.getTelegram_bot_token(), config.getTelegram_notify_user(), config.getTelegram_bot_username(), true);
+            cacheAll();
             executeBot();
         });
         thread.setDaemon(true);
@@ -90,8 +107,45 @@ public class StartManager {
     }
 
     private static void executeBot() {
-        initializeTelegramBot(config.getTelegram_bot_token(), config.getTelegram_notify_user(), config.getTelegram_bot_username());
+        switch (config.getMode_polling()){
+            case 0:
+            case 1:
+                while (true) {
+                    try {
+                        switch(config.getMode_polling()){
+                            case 0:
+                                waitIntervalRandom();
+                                break;
+                            case 1:
+                                waitConfiguredMinutes();
+                                break;
+                        }
+                    } catch (Exception e) {
+                        handleBotError("Error gestionando el polling (hilo), abortando por posibles errores...", e);
+                        System.exit(-1);
+                    }
+                    logger.log(Level.DEBUG, "Polling reached, processing endpoints...");
+                    config.getEndpoints().forEach(endpoint -> processEndpoint(endpoint, false));
+                }
+            case 2:
+                scheduleCronjob();
+                while (true) {
+                    try {Thread.sleep(1000);} catch (Exception e) {}
+                }
+            case 3:
+                config.getEndpoints().forEach(endpoint -> processEndpoint(endpoint, false));
+                break;
+        }
+    }
 
+    private static void preloadFastCache() {
+        config.getEndpoints().forEach(endpoint -> {
+            String idUnique = endpoint.getType() + "_" + endpoint.getId();
+            idCacheArr.put(idUnique, new IDCache(idUnique, config.getFilePath().getParent()));
+        });
+    }
+
+    private static void cacheAll() {
         config.getEndpoints().forEach(endpoint -> {
             try {
                 telegramImpl.sendMessageToUserId(MessageGenerator.generateEndpointLoading(endpoint));
@@ -107,31 +161,6 @@ public class StartManager {
                 handleBotError("Error sending message to user id... ", e);
             }
         });
-
-        if (config.getMode_polling() == 2){
-            scheduleCronjob();
-            while (true) {
-                try {Thread.sleep(1000);} catch (Exception e) {}
-            }
-        }else{
-            while (true) {
-                try {
-                    switch(config.getMode_polling()){
-                        case 0:
-                            waitIntervalRandom();
-                            break;
-                        case 1:
-                            waitConfiguredMinutes();
-                            break;
-                    }
-                } catch (Exception e) {
-                    handleBotError("Error gestionando el polling (hilo), abortando por posibles errores...", e);
-                    System.exit(-1);
-                }
-                logger.log(Level.DEBUG, "Polling reached, processing endpoints...");
-                config.getEndpoints().forEach(endpoint -> processEndpoint(endpoint, false));
-            }
-        }
     }
 
     public static class CronjobWorker implements Job {
@@ -216,13 +245,15 @@ public class StartManager {
         }
     }
 
-    private static void initializeTelegramBot(String token, String notifyUser, String username) {
+    private static void initializeTelegramBot(String token, String notifyUser, String username, boolean sendInitialMessage) {
         try {
             TelegramBotsApi botsApi = new TelegramBotsApi(DefaultBotSession.class);
             telegramImpl = new TelegramImpl(token, notifyUser, username);
             botsApi.registerBot(telegramImpl);
-            String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date());
-            telegramImpl.sendMessageToUserId("<code>" + date + ": STARTING BOT TRACKER SYSTEM</code>");
+            if (sendInitialMessage){
+                String date = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss").format(new Date());
+                telegramImpl.sendMessageToUserId("<code>" + date + ": STARTING BOT TRACKER SYSTEM</code>");
+            }
         } catch (Exception e) {
             handleBotError("Error inicializando el sistema de envío de mensajes de telegram. Posiblemente timeout o algún error con el bot.", e);
         }

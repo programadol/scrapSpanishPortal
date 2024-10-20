@@ -121,13 +121,17 @@ public class StartConfigView extends Application {
         randomModeButton.setUserData(0);
         randomModeButton.setSelected(true);
 
-        RadioButton pollingMillisecondsButton = new RadioButton("Every X minutes");
+        RadioButton pollingMillisecondsButton = new RadioButton("Cada X minutos");
         pollingMillisecondsButton.setToggleGroup(pollingModeGroup);
         pollingMillisecondsButton.setUserData(1);
 
         RadioButton cronjobModeButton = new RadioButton("Cronjob");
         cronjobModeButton.setToggleGroup(pollingModeGroup);
         cronjobModeButton.setUserData(2);
+
+        RadioButton freeModeButton = new RadioButton("Modo libre");
+        freeModeButton.setToggleGroup(pollingModeGroup);
+        freeModeButton.setUserData(3);
 
         TextField userInputText = new TextField();
         userInputText.setPromptText("");
@@ -153,6 +157,10 @@ public class StartConfigView extends Application {
                 cronjobModeButton.setSelected(true);
                 setRadioCronJob(userInputText, labelBeforeInputPolling);
                 break;
+            case 3:
+                freeModeButton.setSelected(true);
+                setFreeMode(userInputText, labelBeforeInputPolling);
+                break;
         }
         userInputText.setText(configFile.getUserinput_polling());
 
@@ -172,6 +180,10 @@ public class StartConfigView extends Application {
                         setRadioCronJob(userInputText, labelBeforeInputPolling);
                         configFile.setMode_polling(2);
                         break;
+                    case 3: // modo libre
+                        setFreeMode(userInputText, labelBeforeInputPolling);
+                        configFile.setMode_polling(3);
+                        break;
                 }
             }
         });
@@ -181,7 +193,9 @@ public class StartConfigView extends Application {
         hBoxRadios.setMaxWidth(primaryStage.getMaxWidth());
         hBoxRadios.getChildren().addAll(randomModeButton,
                 pollingMillisecondsButton,
-                cronjobModeButton);
+                cronjobModeButton,
+                freeModeButton
+                );
 
         telegramConfigSection.getChildren().addAll(
                 createLabel("Configuración de Telegram", 18, true),
@@ -215,6 +229,14 @@ public class StartConfigView extends Application {
         userInputText.setText("");
         userInputText.setPromptText("Cronjob String");
         labelBeforeInputPolling.setVisible(true);
+        labelBeforeInputPolling.setText("Cronjob String");
+    }
+
+    public void setFreeMode(TextField userInputText, Label labelBeforeInputPolling){
+        userInputText.setVisible(false);
+        userInputText.setText("");
+        userInputText.setPromptText("Cronjob String");
+        labelBeforeInputPolling.setVisible(false);
         labelBeforeInputPolling.setText("Cronjob String");
     }
 
@@ -392,7 +414,7 @@ public class StartConfigView extends Application {
 
     private void guardarConfiguracion() {
         listenerConfiguration.onSaveAndStart(configFile);
-        close();
+        if (configFile.getMode_polling() != 3) close();
     }
 
     private void eliminarEndpoint(Accordion accordion, Endpoint endpoint, VBox endpointContent) {
